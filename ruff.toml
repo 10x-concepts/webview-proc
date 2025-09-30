@@ -1,0 +1,17 @@
+line-length = 88
+
+[format]
+quote-style = "single"
+
+[lint]
+extend-select = [
+  "D",   # check docstrings
+  "B",   # flake8-bugbear
+  "I",   # isort
+  "PGH", # pygrep-hooks
+  "RUF", # Ruff-specific
+  "UP",  # pyupgrade
+  "N",   # naming
+  "F",   # pyflakes
+  "C90", # complexity
+]

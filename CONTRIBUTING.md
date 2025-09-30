@@ -8,25 +8,22 @@ By participating, you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md
 ## Getting Started
 1. **Fork the Repository**: Fork the `webview-proc` repository on GitHub and clone your fork locally.
    ```bash
-   git clone https://github.com/your-username/webview-proc.git
+   git clone https://github.com/your_user_name/webview-proc.git
    cd webview-proc
    ```
-2. **Set Up the Environment**: Install dependencies using pip:
+2. **Set Up the Environment**: Install dependencies using uv:
    ```bash
-   pip install -e ".[dev]"
+   uv sync --all-extras
    ```
-   Required: `pywebview`. Optional: `pytest`, `black`, `flake8`, `mypy` for development.
 3. **Create a Branch**: Create a new branch for your changes:
    ```bash
    git checkout -b feature/your-feature-name
    ```
 
 ## Development Guidelines
-- **Code Style**: Follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) and use [Black](https://black.readthedocs.io/) for formatting. Run `black .` before committing.
-- **Linting**: Use [Flake8](https://flake8.pycqa.org/) to ensure code quality. Run `flake8 .` to check for issues.
-- **Type Hints**: Use type hints (per [PEP 484](https://www.python.org/dev/peps/pep-484/)) and verify with `mypy`.
+- **Code Style & Linting**: Use [Ruff](https://docs.astral.sh/ruff/) for formatting, linting, and type checking. Run `ruff check .` to lint and check types, and `ruff format .` to auto-format your code.
 - **Testing**: Write tests using [pytest](https://docs.pytest.org/). Ensure all tests pass with `pytest .`. Tests should cover cross-platform behavior (Windows, macOS, Linux) and `pywebview` backends (Qt, GTK, Cocoa).
-- **Documentation**: Update docstrings and the `README.md` for any new features or changes. Use [Google-style docstrings](https://google.github.io/styleguide/pyguide.html).
+- **Documentation**: Update docstrings and the `README.md` for any new features or changes.
 
 ## Submitting a Pull Request
 1. **Commit Changes**: Write clear, concise commit messages. Group related changes logically.

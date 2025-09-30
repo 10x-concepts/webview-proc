@@ -5,22 +5,24 @@ import sys
 import threading
 import typing as t
 from abc import ABC, abstractmethod
-from multiprocessing import Pipe, Process
 from dataclasses import dataclass, field
+from multiprocessing import Pipe, Process
 from typing import Any
 
 from webview import (
-        OPEN_DIALOG,
-        SAVE_DIALOG,
-        Window,
-        create_window,
-        errors as webview_errors,
-        start,
-    )
+    OPEN_DIALOG,
+    SAVE_DIALOG,
+    create_window,
+    start,
+)
+from webview import (
+    errors as webview_errors,
+)
 
-__all__ = ["WebViewProcess"]
+__all__ = ['WebViewProcess']
 
 # --- Request/Response dataclasses ---
+
 
 @dataclass
 class Response:
@@ -28,104 +30,132 @@ class Response:
     result: Any = None
     error: str | None = None
 
+
 @dataclass
 class Request(ABC):
     request_id: int
+
     @abstractmethod
-    def process(self, window, lock, conn) -> Response:
+    def process(self, window, conn) -> Response:
         """Process the request and return a Response object."""
+
 
 @dataclass
 class CloseRequest(Request):
-    def process(self, window, lock, conn) -> Response:
+    def process(self, window, conn) -> Response:
         window.destroy()
         return Response(request_id=self.request_id, result=True)
+
 
 @dataclass
 class ResizeRequest(Request):
     width: int
     height: int
-    def process(self, window, lock, conn) -> Response:
+
+    def process(self, window, conn) -> Response:
         window.resize(self.width, self.height)
         return Response(request_id=self.request_id, result=True)
+
 
 @dataclass
 class SetTitleRequest(Request):
     title: str
-    def process(self, window, lock, conn) -> Response:
+
+    def process(self, window, conn) -> Response:
         window.set_title(self.title)
         return Response(request_id=self.request_id, result=True)
 
+
 @dataclass
 class ToggleFullscreenRequest(Request):
-    def process(self, window, lock, conn) -> Response:
+    def process(self, window, conn) -> Response:
         window.toggle_fullscreen()
         return Response(request_id=self.request_id, result=True)
+
 
 @dataclass
 class SetMaximizedRequest(Request):
     maximized: bool
-    def process(self, window, lock, conn) -> Response:
+
+    def process(self, window, conn) -> Response:
         if self.maximized:
             window.maximize()
         else:
             window.restore()
         return Response(request_id=self.request_id, result=True)
 
+
 @dataclass
 class PickFileRequest(Request):
     file_types: list
     multiple: bool
-    def process(self, window, lock, conn) -> Response:
-        file_types = [f"{ext} (*.{ext})" for ext in self.file_types] if self.file_types else []
+
+    def process(self, window, conn) -> Response:
+        file_types = (
+            [f'{ext} (*.{ext})' for ext in self.file_types] if self.file_types else []
+        )
         paths = window.create_file_dialog(
             dialog_type=OPEN_DIALOG,
             allow_multiple=self.multiple,
             file_types=file_types,
         )
-        result = [str(paths)] if isinstance(paths, str) else [str(p) for p in paths] if paths else []
+        result = (
+            [str(paths)]
+            if isinstance(paths, str)
+            else [str(p) for p in paths]
+            if paths
+            else []
+        )
         return Response(request_id=self.request_id, result=result)
+
 
 @dataclass
 class SaveFileRequest(Request):
     file_contents: str | bytes
     file_name: str
     directory: str | None = None
-    def process(self, window, lock, conn) -> Response:
+
+    def process(self, window, conn) -> Response:
         destinations = window.create_file_dialog(
             dialog_type=SAVE_DIALOG,
             save_filename=self.file_name,
-            directory=str(self.directory) if self.directory else "",
+            directory=str(self.directory) if self.directory else '',
         )
         if not destinations:
             return Response(request_id=self.request_id, result=False)
 
         destination = destinations if isinstance(destinations, str) else destinations[0]
         if isinstance(self.file_contents, str):
-            with open(destination, "w", encoding="utf-8") as f:
+            with open(destination, 'w', encoding='utf-8') as f:
                 f.write(self.file_contents)
         else:
-            with open(destination, "wb") as f:
+            with open(destination, 'wb') as f:
                 f.write(self.file_contents)
         return Response(request_id=self.request_id, result=True)
+
 
 @dataclass
 class EvaluateJavascriptRequest(Request):
     js_code: str
-    def process(self, window, lock, conn) -> Response:
+
+    def process(self, window, conn) -> Response:
         result = window.evaluate_js(self.js_code)
         return Response(request_id=self.request_id, result=result)
 
+
 @dataclass
 class PingRequest(Request):
-    def process(self, window, lock, conn) -> Response:
+    def process(self, window, conn) -> Response:
         return Response(request_id=self.request_id, result=True)
 
+
 # --- Main process class ---
+
 
 @dataclass
 class WebViewProcess:
     """Synchronous API for managing a pywebview window in the main thread of a separate process."""
+
     url: str
     title: str
     width: float | None = None
@@ -147,7 +177,7 @@ class WebViewProcess:
         if self.icon_path:
             self.icon_path = pathlib.Path(self.icon_path)
         self.parent_conn, self.child_conn = Pipe()
-        
+
     def _new_request_id(self) -> int:
         """Generate a new request ID for tracking requests."""
         self._request_id += 1
@@ -156,7 +186,6 @@ class WebViewProcess:
     def _run_webview(self, conn: t.Any) -> None:
         original_argv = sys.argv
         sys.argv = sys.argv[:1]
-        lock = threading.Lock()
         try:
             window = create_window(
                 title=self.title,
@@ -175,16 +204,16 @@ class WebViewProcess:
                     try:
                         if not conn.poll(0.1):
                             continue
-                        with lock:
-                            request = conn.recv()
+                        request = conn.recv()
                         if request is None:
                             break
                         try:
-                            response = request.process(window, lock, conn)
+                            response = request.process(window, conn)
                         except Exception as e:
-                            response = Response(request_id=request.request_id,error=str(e))
-                        with lock:
-                            conn.send(response)
+                            response = Response(
+                                request_id=request.request_id, error=str(e)
+                            )
+                        conn.send(response)
                     except Exception:
                         break
 
@@ -197,8 +226,7 @@ class WebViewProcess:
                 icon=str(self.icon_path) if self.icon_path else None,
             )
         except Exception as e:
-            with lock:
-                conn.send(Response(error=str(e)))
+            conn.send(Response(error=str(e)))
 
         finally:
             sys.argv = original_argv
@@ -206,7 +234,7 @@ class WebViewProcess:
 
     def _send_command(self, request_obj: Request) -> Any:
         if not self._is_alive:
-            raise RuntimeError("Webview process is not running.")
+            raise RuntimeError('Webview process is not running.')
         self.parent_conn.send(request_obj)
         while True:
             response = self.parent_conn.recv()
@@ -221,7 +249,7 @@ class WebViewProcess:
         while True:
             response = self.parent_conn.recv()
             if not response.request_id:
-                raise RuntimeError(f"Webview initialization failed: {response.error}")
+                raise RuntimeError(f'Webview initialization failed: {response.error}')
             if response.request_id == req.request_id:
                 if response.error:
                     continue
@@ -230,7 +258,7 @@ class WebViewProcess:
 
     def start(self) -> None:
         if self.process is not None and self.process.is_alive():
-            raise RuntimeError("Webview process is already running.")
+            raise RuntimeError('Webview process is already running.')
         original_argv = sys.argv
         sys.argv = sys.argv[:1]
         try:
@@ -250,48 +278,57 @@ class WebViewProcess:
         self._is_alive = False
 
     def resize(self, width: float, height: float) -> None:
-        self._send_command(ResizeRequest(request_id=self._new_request_id(), width=int(width), height=int(height)))
+        self._send_command(
+            ResizeRequest(
+                request_id=self._new_request_id(), width=int(width), height=int(height)
+            )
+        )
 
     def set_title(self, title: str) -> None:
-        self._send_command(SetTitleRequest(request_id=self._new_request_id(), title=title))
+        self._send_command(
+            SetTitleRequest(request_id=self._new_request_id(), title=title)
+        )
 
     def toggle_fullscreen(self) -> None:
         self._send_command(ToggleFullscreenRequest(request_id=self._new_request_id()))
 
     def set_maximized(self, maximized: bool) -> None:
-        self._send_command(SetMaximizedRequest(request_id=self._new_request_id(), maximized=maximized))
+        self._send_command(
+            SetMaximizedRequest(request_id=self._new_request_id(), maximized=maximized)
+        )
 
     def pick_file(
-        self,
-        *,
-        file_types: t.Iterable[str] | None = None,
-        multiple: bool = False
+        self, *, file_types: t.Iterable[str] | None = None, multiple: bool = False
     ) -> list[str] | str | None:
-        result = self._send_command( PickFileRequest(
-            request_id=self._new_request_id(),
-            file_types=list(file_types) if file_types else [],
-            multiple=multiple
-        ))
+        result = self._send_command(
+            PickFileRequest(
+                request_id=self._new_request_id(),
+                file_types=list(file_types) if file_types else [],
+                multiple=multiple,
+            )
+        )
         return result if multiple else result[0] if result else None
 
     def save_file(
         self,
         file_contents: str | bytes,
-        file_name: str = "Unnamed File",
+        file_name: str = 'Unnamed File',
         *,
-        directory: str | pathlib.Path | None = None
+        directory: str | pathlib.Path | None = None,
     ) -> bool:
         req = SaveFileRequest(
             request_id=self._new_request_id(),
             file_contents=file_contents,
             file_name=file_name,
-            directory=str(directory) if directory else None
+            directory=str(directory) if directory else None,
         )
         result = self._send_command(req)
         return result
 
     def evaluate_javascript(self, js_code: str) -> t.Any:
-        req = EvaluateJavascriptRequest(request_id=self._new_request_id(), js_code=js_code)
+        req = EvaluateJavascriptRequest(
+            request_id=self._new_request_id(), js_code=js_code
+        )
         result = self._send_command(req)
         return result
 
