@@ -11,7 +11,7 @@ authors = [
 license = { text = "MIT License" }
 requires-python = ">=3.9"
 dependencies = [
-    "pywebview>=4.0",
+    "pywebview>=6.0",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -36,7 +36,7 @@ Issues = "https://github.com/10x-concepts/webview-proc/issues"
 Documentation = "https://github.com/10x-concepts/webview-proc#readme"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [project.optional-dependencies]
@@ -49,6 +49,18 @@ dev = [
 [tool.hatch.build.targets.wheel]
 packages = ["webview_proc"]
 
+[tool.hatch.build.targets.sdist]
+only-include = [
+  "webview_proc",
+  "README.md",
+  "LICENSE",
+  "pyproject.toml",
+]
+
 [tool.hatch.version]
-path = "webview_proc/__init__.py"
+source = "vcs"
+raw-options = { local_scheme = "no-local-version" }
+
+[tool.hatch.build.hooks.vcs]
+version-file = "webview_proc/_version.py"
 
