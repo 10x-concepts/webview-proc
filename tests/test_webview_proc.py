@@ -3,6 +3,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from webview_proc import (
+    WebViewProcess,
+)
+from webview_proc.webview_proc import (
     EvaluateJavascriptRequest,
     PingRequest,
     ResizeRequest,
@@ -10,7 +13,6 @@ from webview_proc import (
     SetMaximizedRequest,
     SetTitleRequest,
     ToggleFullscreenRequest,
-    WebViewProcess,
 )
 
 

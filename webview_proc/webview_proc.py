@@ -11,6 +11,7 @@ Typical usage example:
     webview.set_title("New Title")
     webview.close()
 """
+
 from __future__ import annotations
 
 import pathlib

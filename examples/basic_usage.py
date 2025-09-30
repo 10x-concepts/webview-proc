@@ -1,9 +1,12 @@
+"""Demonstrate basic usage of the webview process API."""
+
 import pathlib
 
 from webview_proc import WebViewProcess
 
 
-def main():
+def demo():
+    """Demonstrates basic usage of WebViewProcess."""
     webview = WebViewProcess(
         url='icon.jpg',
         title='Local Files',
@@ -53,4 +56,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    demo()

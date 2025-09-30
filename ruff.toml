@@ -9,13 +9,18 @@ ignore = [
    "D212", # no line break after opening quote in multi-line docstring
 ]
 extend-select = [
-  "D",   # check docstrings
-  "B",   # flake8-bugbear
-  "I",   # isort
-  "PGH", # pygrep-hooks
-  "RUF", # Ruff-specific
-  "UP",  # pyupgrade
-  "N",   # naming
-  "F",   # pyflakes
-  "C90", # complexity
+    "D",   # check docstrings
+    "B",   # flake8-bugbear
+    "I",   # isort
+    "PGH", # pygrep-hooks
+    "RUF", # Ruff-specific
+    "UP",  # pyupgrade
+    "N",   # naming
+    "F",   # pyflakes
+    "C90", # complexity
+]
+[lint.per-file-ignores]
+"tests/*" = [
+   "D100", # module docstrings
+   "D103", # function docstrings
 ]
