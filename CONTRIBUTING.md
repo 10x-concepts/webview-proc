@@ -48,8 +48,8 @@ By participating, you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md
 - **Performance**: Optimize thread communication or window operation performance.
 
 ## Reporting Issues
-- Use the [Issue Tracker](https://github.com/username/webview-proc/issues) to report bugs or suggest features.
+- Use the [Issue Tracker](https://github.com/10x-concepts/webview-proc/issues) to report bugs or suggest features.
 - Provide a clear description, steps to reproduce, platform details (e.g., OS, `pywebview` backend), and any error messages.
 
 ## Community
-Join discussions in the [Issue Tracker](https://github.com/username/webview-proc/issues) or contact maintainers for questions. We appreciate your contributions to making `webview-proc` better!
+Join our community on [Discord](https://discord.gg/bGbkHWch) for discussion, support, and collaboration.

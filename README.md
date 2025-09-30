@@ -50,7 +50,7 @@ webview.join()
 `webview-proc` addresses the need for stable and isolated webview management in Python applications. By running `pywebview` windows in a separate thread, it prevents crashes from affecting the main application. The synchronous `WebViewProcess` class is ideal for scripts and applications requiring simple, blocking operations, and it integrates seamlessly with web servers (e.g., FastAPI). The package handles platform-specific quirks (e.g., main-thread requirements on macOS), making it suitable for desktop and hybrid web apps.
 
 ## Contributing
-Contributions are welcome! Check out our [Contributing Guidelines](CONTRIBUTING.md) and [Issue Tracker](https://github.com/username/webview-proc/issues) to get started.
+Contributions are welcome! Check out our [Contributing Guidelines](https://github.com/10x-concepts/webview-proc/blob/main/CONTRIBUTING.md) and [Issue Tracker](https://github.com/10x-concepts/webview-proc/issues) to get started.
 
 ## License
 MIT License
