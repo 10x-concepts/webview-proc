@@ -4,6 +4,10 @@ line-length = 88
 quote-style = "single"
 
 [lint]
+ignore = [
+   "D203", # a blank line before class docstrings
+   "D212", # no line break after opening quote in multi-line docstring
+]
 extend-select = [
   "D",   # check docstrings
   "B",   # flake8-bugbear
