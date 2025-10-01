@@ -24,16 +24,11 @@ from multiprocessing import Pipe, Process
 from typing import Any
 
 from webview import (
-    OPEN_DIALOG,
-    SAVE_DIALOG,
+    FileDialog,
     create_window,
     start,
 )
-from webview import (
-    errors as webview_errors,
-)
-
-__all__ = ['WebViewProcess']
+from webview.errors import WebViewException
 
 # --- Request/Response dataclasses ---
 
@@ -223,7 +218,8 @@ class PickFileRequest(Request):
     """
 
     file_types: list
-    multiple: bool
+    dialog_type: FileDialog = FileDialog.OPEN
+    multiple: bool = False
 
     def process(self, window, conn) -> Response:
         """
@@ -241,7 +237,7 @@ class PickFileRequest(Request):
             [f'{ext} (*.{ext})' for ext in self.file_types] if self.file_types else []
         )
         paths = window.create_file_dialog(
-            dialog_type=OPEN_DIALOG,
+            dialog_type=self.dialog_type,
             allow_multiple=self.multiple,
             file_types=file_types,
         )
@@ -267,7 +263,7 @@ class SaveFileRequest(Request):
 
     """
 
-    file_contents: str | bytes
+    file_contents: str | bytes | pathlib.Path
     file_name: str
     directory: str | None = None
 
@@ -284,7 +280,7 @@ class SaveFileRequest(Request):
 
         """
         destinations = window.create_file_dialog(
-            dialog_type=SAVE_DIALOG,
+            dialog_type=FileDialog.SAVE,
             save_filename=self.file_name,
             directory=str(self.directory) if self.directory else '',
         )
@@ -295,9 +291,17 @@ class SaveFileRequest(Request):
         if isinstance(self.file_contents, str):
             with open(destination, 'w', encoding='utf-8') as f:
                 f.write(self.file_contents)
-        else:
+        elif isinstance(self.file_contents, bytes):
             with open(destination, 'wb') as f:
                 f.write(self.file_contents)
+        elif isinstance(self.file_contents, pathlib.Path):
+            with open(self.file_contents, 'rb') as src, open(destination, 'wb') as dst:
+                dst.write(src.read())
+        else:
+            return Response(
+                request_id=self.request_id,
+                error='file_contents must be str, bytes, or pathlib.Path',
+            )
         return Response(request_id=self.request_id, result=True)
 
 
@@ -366,7 +370,7 @@ class WebViewProcess:
         fullscreen: Whether to start in fullscreen.
         gui: The GUI backend to use.
         debug: Whether to enable debug mode.
-        http_server: Optional HTTP server instance.
+        func: An optional function to run after mainloop has started.
 
     """
 
@@ -379,7 +383,7 @@ class WebViewProcess:
     fullscreen: bool = False
     gui: str | None = None
     debug: bool = False
-    http_server: t.Any | None = None
+    func: t.Callable[[], None] | None = None
 
     process: Process | None = field(init=False, default=None)
     parent_conn: Any = field(init=False)
@@ -449,6 +453,7 @@ class WebViewProcess:
             command_thread.start()
 
             start(
+                func=self.func,
                 gui=self.gui,
                 debug=self.debug,
                 icon=str(self.icon_path) if self.icon_path else None,
@@ -478,7 +483,7 @@ class WebViewProcess:
             response = self.parent_conn.recv()
             if response.request_id == request_obj.request_id:
                 if response.error:
-                    raise webview_errors.WebViewException(response.error)
+                    raise WebViewException(response.error)
                 return response.result
 
     def _wait_for_window(self) -> None:
@@ -515,8 +520,12 @@ class WebViewProcess:
 
     def close(self) -> None:
         """Close the webview window and stop the process."""
-        self._send_command(CloseRequest(request_id=self._new_request_id()))
-        self._is_alive = False
+        if self.is_alive():
+            self._send_command(CloseRequest(request_id=self._new_request_id()))
+            self._is_alive = False
+
+    def is_alive(self):
+        return self.process is not None and self._is_alive
 
     def resize(self, width: float, height: float) -> None:
         """
@@ -578,15 +587,34 @@ class WebViewProcess:
         result = self._send_command(
             PickFileRequest(
                 request_id=self._new_request_id(),
+                dialog_type=FileDialog.OPEN,
                 file_types=list(file_types) if file_types else [],
                 multiple=multiple,
             )
         )
         return result if multiple else result[0] if result else None
 
+    def pick_folder(
+        self,
+    ) -> list[str] | str | None:
+        """
+        Open a file dialog to pick a folder.
+
+        Returns:
+            str: selected folder or None.
+
+        """
+        return self._send_command(
+            PickFileRequest(
+                request_id=self._new_request_id(),
+                dialog_type=FileDialog.FOLDER,
+                file_types=[],
+            )
+        )
+
     def save_file(
         self,
-        file_contents: str | bytes,
+        file_contents: str | bytes | pathlib.Path,
         file_name: str = 'Unnamed File',
         *,
         directory: str | pathlib.Path | None = None,
@@ -595,7 +623,7 @@ class WebViewProcess:
         Open a save dialog and write contents to the selected file.
 
         Args:
-            file_contents: The contents to save.
+            file_contents: The contents to save or path to the file that contains it.
             file_name: The default file name.
             directory: The directory to save in.
 
@@ -631,13 +659,12 @@ class WebViewProcess:
 
     def join(self) -> None:
         """Wait for the webview process to finish."""
-        if self.process is not None and self._is_alive:
+        if self.is_alive():
             self.process.join()
             self._is_alive = False
 
     def __del__(self) -> None:
         """Clean up the process when the object is deleted."""
-        if self.process is not None and self._is_alive:
-            self.close()
+        if self.is_alive():
             self.process.terminate()
-            self.process.join()
+            self.join()

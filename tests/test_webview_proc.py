@@ -6,6 +6,7 @@ from webview_proc import (
     WebViewProcess,
 )
 from webview_proc.webview_proc import (
+    Response,
     EvaluateJavascriptRequest,
     PingRequest,
     ResizeRequest,
@@ -26,7 +27,7 @@ def webview_proc():
 
 def test_send_command_success(webview_proc):
     webview_proc.parent_conn.recv.side_effect = [
-        {'request_id': 0, 'result': 'ok', 'error': None}
+        Response(result='ok')
     ]
     result = webview_proc._send_command(PingRequest(request_id=0))
     assert result == 'ok'
@@ -35,9 +36,9 @@ def test_send_command_success(webview_proc):
 
 def test_send_command_error(webview_proc):
     webview_proc.parent_conn.recv.side_effect = [
-        {'request_id': 0, 'result': None, 'error': 'fail'}
+        Response(error='fail')
     ]
-    with patch('webview_proc.webview_errors.WebViewException') as exc:
+    with patch('webview_proc.webview_proc.WebViewException') as exc:
         exc.side_effect = Exception('fail')
         with pytest.raises(Exception, match='fail'):
             webview_proc._send_command(PingRequest(request_id=0))
@@ -45,7 +46,7 @@ def test_send_command_error(webview_proc):
 
 def test_wait_for_window_success(webview_proc):
     webview_proc.parent_conn.recv.side_effect = [
-        {'request_id': 0, 'result': True, 'error': None}
+        Response(request_id=1, result=True)
     ]
     webview_proc._wait_for_window()
     webview_proc.parent_conn.send.assert_called_once()
@@ -53,7 +54,7 @@ def test_wait_for_window_success(webview_proc):
 
 def test_wait_for_window_error(webview_proc):
     webview_proc.parent_conn.recv.side_effect = [
-        {'request_id': -1, 'error': 'init fail'}
+        Response(request_id=0, error='init fail')
     ]
     with pytest.raises(RuntimeError, match='init fail'):
         webview_proc._wait_for_window()
