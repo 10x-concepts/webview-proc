@@ -1,6 +1,8 @@
 """Demonstrate basic usage of the webview process API."""
 
+import os
 import pathlib
+from functools import partial
 
 from webview_proc import WebViewProcess
 
@@ -12,11 +14,11 @@ def demo():
         title='Local Files',
         width=800,
         height=600,
-        http_server=True,
         icon_path='icon.jpg',
+        on_close=partial(os._exit, 0),
     )
 
-    # Start the webview in a separate thread
+    # Start the webview in a separate process
     webview.start()
 
     # Perform window operations

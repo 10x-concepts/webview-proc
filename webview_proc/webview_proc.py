@@ -371,6 +371,7 @@ class WebViewProcess:
         gui: The GUI backend to use.
         debug: Whether to enable debug mode.
         func: An optional function to run after mainloop has started.
+        on_close: An optional function to run when the window is closed.
 
     """
 
@@ -384,11 +385,12 @@ class WebViewProcess:
     gui: str | None = None
     debug: bool = False
     func: t.Callable[[], None] | None = None
+    on_close: t.Callable[[], None] | None = None
 
     process: Process | None = field(init=False, default=None)
     parent_conn: Any = field(init=False)
     child_conn: Any = field(init=False)
-    _is_alive: bool = field(init=False, default=False)
+    _ready_for_commands: bool = field(init=False, default=False)
     _request_id: int = field(init=False, default=0)
 
     def __post_init__(self):
@@ -476,7 +478,7 @@ class WebViewProcess:
             Any: The result from the response.
 
         """
-        if not self._is_alive:
+        if not self._ready_for_commands:
             raise RuntimeError('Webview process is not running.')
         self.parent_conn.send(request_obj)
         while True:
@@ -502,7 +504,7 @@ class WebViewProcess:
 
     def start(self) -> None:
         """Start the webview process and wait for the window to initialize."""
-        if self.process is not None and self.process.is_alive():
+        if self.is_alive():
             raise RuntimeError('Webview process is already running.')
         original_argv = sys.argv
         sys.argv = sys.argv[:1]
@@ -513,19 +515,29 @@ class WebViewProcess:
                 daemon=True,
             )
             self.process.start()
-            self._is_alive = True
+            self._ready_for_commands = True
             self._wait_for_window()
         finally:
             sys.argv = original_argv
 
+        if self.on_close is not None:
+
+            def monitor():
+                self.join()
+                self.on_close()
+
+            monitor_thread = threading.Thread(target=monitor, daemon=True)
+            monitor_thread.start()
+
     def close(self) -> None:
         """Close the webview window and stop the process."""
-        if self.is_alive():
+        if self._ready_for_commands:
             self._send_command(CloseRequest(request_id=self._new_request_id()))
-            self._is_alive = False
+            self._ready_for_commands = False
 
     def is_alive(self):
-        return self.process is not None and self._is_alive
+        """Check if the process is alive."""
+        return self.process is not None and self.process.is_alive()
 
     def resize(self, width: float, height: float) -> None:
         """
@@ -661,7 +673,8 @@ class WebViewProcess:
         """Wait for the webview process to finish."""
         if self.is_alive():
             self.process.join()
-            self._is_alive = False
+        self.proces = None
+        self._ready_for_commands = False
 
     def __del__(self) -> None:
         """Clean up the process when the object is deleted."""
