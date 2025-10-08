@@ -1,3 +1,4 @@
+import gc
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -22,7 +23,33 @@ def webview_proc():
     proc = WebViewProcess(url='http://test', title='Test')
     proc._ready_for_commands = True
     proc.parent_conn = MagicMock()
-    return proc
+    p = proc.process = MagicMock()
+    p.terminate = MagicMock()
+    p.is_alive.return_value = True
+    assert proc.is_alive()
+    yield proc
+
+
+def test_del():
+    proc = WebViewProcess(url='http://test', title='Test')
+    p = proc.process = MagicMock()
+    p.terminate = MagicMock()
+    assert proc.is_alive()
+    del proc
+    gc.collect()
+    assert p.terminate.call_count == 1
+
+
+def test_not_started():
+    proc = WebViewProcess(url='http://test', title='Test')
+    with pytest.raises(RuntimeError):
+        proc.set_title('test')
+
+
+def test_start_when_alive(webview_proc):
+    assert webview_proc.is_alive()
+    with pytest.raises(RuntimeError):
+        webview_proc.start()
 
 
 def test_send_command_success(webview_proc):
@@ -99,6 +126,12 @@ def test_pick_file_single(webview_proc):
     with patch.object(webview_proc, '_send_command', return_value=['a.txt']):
         result = webview_proc.pick_file(file_types=['txt'], multiple=False)
         assert result == 'a.txt'
+
+
+def test_pick_file_folder(webview_proc):
+    with patch.object(webview_proc, '_send_command', return_value='f'):
+        result = webview_proc.pick_folder()
+        assert result == 'f'
 
 
 def test_save_file(webview_proc):

@@ -43,8 +43,8 @@ build-backend = "hatchling.build"
 dev = [
     "pytest>=7.0",
     "pytest-cov>=6.0",
-    "ruff>=0.13",
-    "uv>=0.8.19"
+    "ruff>=0.14",
+    "uv>=0.9"
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -65,3 +65,5 @@ raw-options = { local_scheme = "no-local-version" }
 [tool.hatch.build.hooks.vcs]
 version-file = "webview_proc/_version.py"
 
+[tool.coverage.run]
+patch = ["subprocess"]

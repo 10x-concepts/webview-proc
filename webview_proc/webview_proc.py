@@ -288,14 +288,19 @@ class SaveFileRequest(Request):
             return Response(request_id=self.request_id, result=False)
 
         destination = destinations if isinstance(destinations, str) else destinations[0]
+        destination = (
+            pathlib.Path(self.directory) / destination
+            if self.directory
+            else pathlib.Path(destination)
+        )
         if isinstance(self.file_contents, str):
-            with open(destination, 'w', encoding='utf-8') as f:
+            with destination.open('w', encoding='utf-8') as f:
                 f.write(self.file_contents)
         elif isinstance(self.file_contents, bytes):
-            with open(destination, 'wb') as f:
+            with destination.open('wb') as f:
                 f.write(self.file_contents)
         elif isinstance(self.file_contents, pathlib.Path):
-            with open(self.file_contents, 'rb') as src, open(destination, 'wb') as dst:
+            with self.file_contents.open('rb') as src, destination.open('wb') as dst:
                 dst.write(src.read())
         else:
             return Response(
@@ -508,6 +513,9 @@ class WebViewProcess:
             raise RuntimeError('Webview process is already running.')
         original_argv = sys.argv
         sys.argv = sys.argv[:1]
+
+        on_close, self.on_close = self.on_close, None
+
         try:
             self.process = Process(
                 target=self._run_webview,
@@ -520,11 +528,11 @@ class WebViewProcess:
         finally:
             sys.argv = original_argv
 
-        if self.on_close is not None:
+        if on_close is not None:
 
             def monitor():
                 self.join()
-                self.on_close()
+                on_close()
 
             monitor_thread = threading.Thread(target=monitor, daemon=True)
             monitor_thread.start()
@@ -622,7 +630,7 @@ class WebViewProcess:
                 dialog_type=FileDialog.FOLDER,
                 file_types=[],
             )
-        )
+        )[0]
 
     def save_file(
         self,
@@ -669,15 +677,20 @@ class WebViewProcess:
         result = self._send_command(req)
         return result
 
-    def join(self) -> None:
+    def join(self) -> int | None:
         """Wait for the webview process to finish."""
         if self.is_alive():
             self.process.join()
-        self.proces = None
         self._ready_for_commands = False
+
+        if self.process:
+            try:
+                return self.process.exitcode
+            finally:
+                self.process = None
+        return None
 
     def __del__(self) -> None:
         """Clean up the process when the object is deleted."""
         if self.is_alive():
             self.process.terminate()
-            self.join()
