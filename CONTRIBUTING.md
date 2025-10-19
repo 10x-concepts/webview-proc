@@ -52,4 +52,4 @@ By participating, you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md
 - Provide a clear description, steps to reproduce, platform details (e.g., OS, `pywebview` backend), and any error messages.
 
 ## Community
-Join our community on [Discord](https://discord.gg/bGbkHWch) for discussion, support, and collaboration.
+Join our community on [Discord](https://discord.gg/Cmw45JPJZ5) for discussion, support, and collaboration.
